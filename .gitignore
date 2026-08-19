@@ -3,3 +3,4 @@ invite_state.json
 __pycache__/
 .venv/
 bot.log
+bot_console.log
