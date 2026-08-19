@@ -9,6 +9,7 @@ Cara jalan: .venv/Scripts/python bot.py
 Perlu permission bot: Manage Server (baca invite) + Members intent ON.
 """
 
+import logging
 import os
 
 import discord
@@ -18,6 +19,13 @@ from dotenv import load_dotenv
 from tracker import InviteTracker
 
 load_dotenv()
+
+logging.basicConfig(
+    filename=os.path.join(os.path.dirname(os.path.abspath(__file__)), "bot.log"),
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+)
+log = logging.getLogger("invite-bot")
 
 TOKEN = os.getenv("DISCORD_BOT_TOKEN", "").strip()
 GOAL = int(os.getenv("INVITE_GOAL", 10))
@@ -41,7 +49,7 @@ async def refresh_snapshot(guild):
     try:
         invites = await guild.invites()
     except discord.Forbidden:
-        print(f"[{guild.name}] Gak bisa baca invite - kasih permission Manage Server ke bot.")
+        log.warning(f"[{guild.name}] Gak bisa baca invite - kasih permission Manage Server ke bot.")
         return False
     tracker.snapshot_invites(guild.id, _invite_rows(invites))
     return True
@@ -49,15 +57,15 @@ async def refresh_snapshot(guild):
 
 @bot.event
 async def on_ready():
-    print(f"Login sebagai {bot.user} (ID {bot.user.id})")
+    log.info(f"Login sebagai {bot.user} (ID {bot.user.id})")
     for guild in bot.guilds:
         ok = await refresh_snapshot(guild)
-        print(f"  [{guild.name}] snapshot invite: {'OK' if ok else 'GAGAL'}")
+        log.info(f"  [{guild.name}] snapshot invite: {'OK' if ok else 'GAGAL'}")
     try:
         synced = await bot.tree.sync()
-        print(f"Slash command tersync: {len(synced)}")
+        log.info(f"Slash command tersync: {len(synced)}")
     except Exception as e:
-        print(f"Sync slash command gagal: {e}")
+        log.error(f"Sync slash command gagal: {e}")
 
 
 @bot.event
@@ -75,7 +83,7 @@ async def on_member_join(member):
     if inviter_id and str(inviter_id) != str(member.id):
         count = tracker.record(guild.id, inviter_id)
         inviter = guild.get_member(int(inviter_id))
-        print(f"[{guild.name}] {member} join via {code} dari {inviter} - progres {count}/{GOAL}")
+        log.info(f"[{guild.name}] {member} join via {code} dari {inviter} - progres {count}/{GOAL}")
         if count >= GOAL:
             await announce_reward(guild, inviter, count)
 
