@@ -68,6 +68,24 @@ t2 = t.InviteTracker(state_file)  # load ulang dari disk
 check("state persist ke disk", t2.progress(G, 111) == 2)
 
 print()
+print("=" * 60)
+print("5) IZIN EFEKTIF CREATE INVITE (fix_invite_perms.py)")
+print("=" * 60)
+_spec_f = importlib.util.spec_from_file_location(
+    "fix_invite_perms", os.path.join(os.path.dirname(os.path.abspath(__file__)), "fix_invite_perms.py")
+)
+fip = importlib.util.module_from_spec(_spec_f)
+_spec_f.loader.exec_module(fip)
+CREATE = fip.CREATE_INSTANT_INVITE
+G_ALLOW, G_DENY = CREATE, 0
+check("guild ALLOW + tanpa overwrite -> ALLOW", fip.effective_status(G_ALLOW) == "ALLOW")
+check("guild DENY + tanpa overwrite -> DENY", fip.effective_status(G_DENY) == "DENY")
+check("overwrite DENY menang atas guild ALLOW", fip.effective_status(G_ALLOW, {"allow": "0", "deny": str(CREATE)}) == "DENY")
+check("overwrite ALLOW menang atas guild DENY", fip.effective_status(G_DENY, {"allow": str(CREATE), "deny": "0"}) == "ALLOW")
+check("overwrite UNSET ikut guild ALLOW", fip.effective_status(G_ALLOW, {"allow": "0", "deny": "0"}) == "ALLOW")
+check("overwrite UNSET ikut guild DENY", fip.effective_status(G_DENY, {"allow": "0", "deny": "0"}) == "DENY")
+
+print()
 if FAILURES:
     print(f"RESULT: {len(FAILURES)} FAILURE(S): {FAILURES}")
     sys.exit(1)
