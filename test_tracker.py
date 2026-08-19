@@ -12,6 +12,8 @@ import tempfile
 tmpdir = tempfile.mkdtemp(prefix="invite_tracker_test_")
 state_file = os.path.join(tmpdir, "invite_state.json")
 
+REPO_DIR = os.path.dirname(os.path.abspath(__file__))
+
 spec = importlib.util.spec_from_file_location("tracker", os.path.join(os.path.dirname(os.path.abspath(__file__)), "tracker.py"))
 t = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(t)
