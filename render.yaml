@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: discord-invite-giveaway
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    healthCheckPath: /ping
+    envVars:
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: INVITE_GOAL
+        value: "20"
+      - key: REWARD_TEXT
+        value: klaim hadiah ke owner
+      - key: REWARD_CHANNEL_ID
+        value: "1539493182797127781"
+      - key: PING_PORT
+        value: "8080"
+      - key: STATE_FILE
+        value: invite_state.json

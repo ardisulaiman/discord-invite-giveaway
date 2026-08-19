@@ -11,6 +11,7 @@ Perlu permission bot: Manage Server (baca invite) + Members intent ON.
 
 import logging
 import os
+import threading
 
 import discord
 from discord.ext import commands
@@ -138,8 +139,41 @@ async def invite_top(interaction: discord.Interaction):
     await interaction.response.send_message("**Top pengundang:**\n" + "\n".join(lines))
 
 
+def _start_ping_server():
+    """Server HTTP mini buat keep-alive di hosting cloud (Render dll).
+
+    Aktif cuma kalau env PING_PORT diisi - nggak ganggu run lokal.
+    Diping dari luar (misal UptimeRobot) tiap 5 menit biar service
+    gratis yang idle nggak ditidurkan host-nya.
+    """
+    port = int(os.getenv("PING_PORT", "0") or 0)
+    if not port:
+        return
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    class _H(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/ping":
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"pong")
+            else:
+                self.send_response(404)
+                self.end_headers()
+
+        def log_message(self, *a):
+            pass
+
+    threading.Thread(
+        target=HTTPServer(("0.0.0.0", port), _H).serve_forever,
+        daemon=True,
+    ).start()
+    log.info(f"Ping server aktif di port {port} (/ping)")
+
+
 if __name__ == "__main__":
     if not TOKEN:
         print("DISCORD_BOT_TOKEN kosong! Isi di .env dulu.")
         raise SystemExit(1)
+    _start_ping_server()
     bot.run(TOKEN)

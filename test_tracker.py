@@ -98,6 +98,28 @@ _req = open(os.path.join(REPO_DIR, "requirements.txt"), encoding="utf-8").read()
 check("requirements: discord.py + dotenv", "discord.py" in _req and "python-dotenv" in _req)
 
 print()
+print("=" * 60)
+print("7) PING SERVER KEEP-ALIVE (bot.py _start_ping_server)")
+print("=" * 60)
+import importlib.util as _ilu
+
+_botspec = _ilu.spec_from_file_location("bot", os.path.join(REPO_DIR, "bot.py"))
+botmod = _ilu.module_from_spec(_botspec)
+_botspec.loader.exec_module(botmod)
+os.environ["PING_PORT"] = "8123"
+botmod._start_ping_server()
+import urllib.request as _ur
+
+try:
+    with _ur.urlopen("http://127.0.0.1:8123/ping", timeout=5) as r:
+        body = r.read().decode()
+        check("/ping jawab 200 + pong", r.status == 200 and body == "pong", f"{r.status}/{body}")
+except Exception as e:
+    check("/ping jawab 200 + pong", False, str(e))
+os.environ.pop("PING_PORT", None)
+check("PING_PORT kosong -> server nggak nyala", botmod._start_ping_server() is None)
+
+print()
 if FAILURES:
     print(f"RESULT: {len(FAILURES)} FAILURE(S): {FAILURES}")
     sys.exit(1)

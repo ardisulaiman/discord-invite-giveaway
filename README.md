@@ -29,6 +29,24 @@ Catatan: Railway free tier punya filesystem ephemeral — kalau service di-rebui
 file `invite_state.json` (progres undangan) bisa ter-reset. Kalau mau progres aman
 abadi, pasang **Volume** di tab Settings (mount ke `/app`) dan set `STATE_FILE=/app/invite_state.json`.
 
+## Deploy 24/7 ke Render (gratis, tanpa kartu kredit, anti-tidur)
+
+1. Push repo ini ke GitHub (sudah).
+2. Buka https://render.com -> sign up (bisa pakai akun GitHub, tanpa kartu).
+3. **New** -> **Blueprint** -> pilih repo `ardisulaiman/discord-invite-giveaway`.
+   Render baca `render.yaml` yang sudah disiapkan.
+4. Isi variable `DISCORD_BOT_TOKEN` (yang lain sudah diisi default di render.yaml).
+5. **Apply** -> deploy. Bot langsung online 24/7.
+
+**Anti-tidur (penting):** service gratis Render ditidurkan kalau 15 menit idle.
+Bot sudah punya endpoint `/ping` (env `PING_PORT=8080`). Biar gak pernah tidur:
+1. Buka https://uptimerobot.com (gratis, tanpa kartu) -> tambah **New Monitor**
+2. Type: **HTTP(s)** -> URL: `https://<nama-app>.onrender.com/ping` -> interval **5 minutes**
+UptimeRobot nge-ping tiap 5 menit -> Render ngeliat traffic -> bot gak pernah tidur.
+
+Catatan sama kayak Railway: filesystem ephemeral, pakai Volume kalau mau
+`invite_state.json` abadi.
+
 ## Perintah bot
 
 - `/invite` - cek progres undangan lu (contoh: 12/20)
