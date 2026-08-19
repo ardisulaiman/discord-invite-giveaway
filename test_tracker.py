@@ -86,6 +86,16 @@ check("overwrite UNSET ikut guild ALLOW", fip.effective_status(G_ALLOW, {"allow"
 check("overwrite UNSET ikut guild DENY", fip.effective_status(G_DENY, {"allow": "0", "deny": "0"}) == "DENY")
 
 print()
+print("=" * 60)
+print("6) KONFIG DEPLOY RAILWAY (railpack.toml + requirements)")
+print("=" * 60)
+_rp = open(os.path.join(REPO_DIR, "railpack.toml"), encoding="utf-8").read()
+check("railpack: buildCommand pip install requirements", "pip install -r requirements.txt" in _rp)
+check("railpack: startCommand python bot.py", 'startCommand = "python bot.py"' in _rp)
+_req = open(os.path.join(REPO_DIR, "requirements.txt"), encoding="utf-8").read()
+check("requirements: discord.py + dotenv", "discord.py" in _req and "python-dotenv" in _req)
+
+print()
 if FAILURES:
     print(f"RESULT: {len(FAILURES)} FAILURE(S): {FAILURES}")
     sys.exit(1)
