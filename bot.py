@@ -12,11 +12,13 @@ Perlu permission bot: Manage Server (baca invite) + Members intent ON.
 import logging
 import os
 import threading
+import time
 
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
+from levels import LevelTracker
 from tracker import InviteTracker
 
 load_dotenv()
@@ -40,6 +42,17 @@ intents.members = True       # tau siapa yang join (PRIVILEGED - nyalain di port
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 tracker = InviteTracker(STATE_FILE)
+
+# ===== LEVELING (XP dari chat) =====
+LEVELS_FILE = os.getenv("LEVELS_FILE", "levels.json")
+XP_PER_MSG = int(os.getenv("XP_PER_MSG", "10"))
+XP_COOLDOWN = int(os.getenv("XP_COOLDOWN_SECONDS", "60"))  # anti-spam per user
+LEVEL5 = 5
+LEVEL_CHANNEL_NAME = os.getenv("LEVEL_CHANNEL_NAME", "level")
+ASSET_CHANNEL_NAME = os.getenv("ASSET_CHANNEL_NAME", "asset-level")
+LEVEL5_ROLE_NAME = os.getenv("LEVEL5_ROLE_NAME", "Level 5")
+levels = LevelTracker(LEVELS_FILE)
+XP_COOLDOWNS = {}
 
 
 def _invite_rows(invites):
@@ -169,6 +182,83 @@ def _start_ping_server():
         daemon=True,
     ).start()
     log.info(f"Ping server aktif di port {port} (/ping)")
+
+
+async def announce_level_up(member, new_level):
+    ch = discord.utils.get(member.guild.text_channels, name=LEVEL_CHANNEL_NAME)
+    if ch is not None:
+        try:
+            await ch.send(
+                f"Selamat {member.mention}! Naik ke level {new_level}."
+            )
+        except discord.Forbidden:
+            log.warning("Gagal post announce level-up - cek izin bot di #level")
+    if new_level >= LEVEL5:
+        role = discord.utils.get(member.guild.roles, name=LEVEL5_ROLE_NAME)
+        if role is not None and role not in member.roles:
+            try:
+                await member.add_roles(role)
+                log.info(f"[{member.guild.name}] {member} dapet role {role.name} - akses #{ASSET_CHANNEL_NAME}")
+            except discord.Forbidden:
+                log.error("Gagal kasih role Level 5 - cek Manage Roles bot")
+
+
+@bot.event
+async def on_message(message):
+    if message.author.bot or message.guild is None:
+        return
+    now = time.time()
+    if now - XP_COOLDOWNS.get(message.author.id, 0) < XP_COOLDOWN:
+        return
+    XP_COOLDOWNS[message.author.id] = now
+    rec, leveled = levels.add_xp(message.author.id, XP_PER_MSG)
+    if leveled:
+        await announce_level_up(message.author, rec["level"])
+
+
+def _progress_bar_xp(xp, need, width=20):
+    filled = width if need <= 0 else min(width, int(xp / need * width))
+    return "[" + "=" * filled + "-" * (width - filled) + "]"
+
+
+@bot.tree.command(name="level", description="Cek level lu (hanya di #level)")
+async def level_check(interaction: discord.Interaction):
+    ch = discord.utils.get(interaction.guild.text_channels, name=LEVEL_CHANNEL_NAME)
+    if ch is None or interaction.channel_id != ch.id:
+        await interaction.response.send_message(
+            f"Cek level cuma di #{LEVEL_CHANNEL_NAME}.", ephemeral=True
+        )
+        return
+    lvl, xp, need = levels.progress(interaction.user.id)
+    text = (
+        f"Level lu: **{lvl}**\n"
+        f"XP: {xp}/{need}\n"
+        f"{_progress_bar_xp(xp, need)}\n"
+        f"Sisa {need - xp} XP buat naik ke level {lvl + 1}"
+    )
+    if lvl < LEVEL5:
+        text += f"\nNaik ke level {LEVEL5} buat buka #{ASSET_CHANNEL_NAME}."
+    await interaction.response.send_message(text)
+
+
+@bot.tree.command(name="level_top", description="Top 10 level tertinggi (hanya di #level)")
+async def level_top(interaction: discord.Interaction):
+    ch = discord.utils.get(interaction.guild.text_channels, name=LEVEL_CHANNEL_NAME)
+    if ch is None or interaction.channel_id != ch.id:
+        await interaction.response.send_message(
+            f"Cek level cuma di #{LEVEL_CHANNEL_NAME}.", ephemeral=True
+        )
+        return
+    lb = levels.leaderboard(10)
+    if not lb:
+        await interaction.response.send_message("Belum ada yang punya XP.")
+        return
+    lines = []
+    for rank, (uid, rec) in enumerate(lb, 1):
+        member = interaction.guild.get_member(int(uid))
+        name = member.display_name if member else f"user {uid}"
+        lines.append(f"{rank}. {name} - level {rec['level']} ({rec['xp']} XP)")
+    await interaction.response.send_message("**Top level:**\n" + "\n".join(lines))
 
 
 if __name__ == "__main__":

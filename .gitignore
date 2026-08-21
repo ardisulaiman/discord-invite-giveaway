@@ -4,3 +4,4 @@ __pycache__/
 .venv/
 bot.log
 bot_console.log
+levels.json
