@@ -62,7 +62,7 @@ def main():
 
     guilds, err = api("GET", "https://discord.com/api/v10/users/@me/guilds", token=tok)
     botp = int(guilds[0]["permissions"]) if guilds else 0
-    print(f"Bot perms -> ManageChannels: {bool(botp & 16)} | ManageRoles: {bool(botp & 32)}")
+    print(f"Bot perms -> ManageChannels: {bool(botp & 16)} | ManageRoles: {bool(botp & 268435456)}")
 
     roles, _ = api("GET", f"https://discord.com/api/v10/guilds/{GID}/roles", token=tok)
     everyone = next((r for r in roles if r["id"] == GID), None)
@@ -86,7 +86,7 @@ def main():
         print("Semua channel text udah bisa di-invite oleh @everyone. Beres!")
         return
 
-    if not guild_ok and (botp & 32):
+    if not guild_ok and (botp & 268435456):
         newp = str(ep | CREATE_INSTANT_INVITE)
         _, err = api("PATCH", f"https://discord.com/api/v10/guilds/{GID}/roles/{GID}", {"permissions": newp}, token=tok)
         print(f"fix role @everyone: {'OK' if not err else 'GAGAL ' + err}")

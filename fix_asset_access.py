@@ -26,6 +26,7 @@ RANK_ROLES = [
     ("Level 20", 0xFFFFFF),  # putih
 ]
 ASSET_CHANNEL = "asset-level"
+ASSET_CHANNEL_ID = "1540204070097264660"  # 🗞asset-level (nama pakai emoji, lookup by id lebih aman)
 
 
 def load_token():
@@ -80,9 +81,11 @@ def main():
             if r:
                 role_ids[name] = r["id"]
 
-    # 2) channel #asset-level
+    # 2) channel #asset-level (cari by id dulu, fallback by nama)
     chans, err = api("GET", f"https://discord.com/api/v10/guilds/{GID}/channels", token=tok)
-    ch = next((c for c in chans if c["type"] == 0 and c["name"] == ASSET_CHANNEL), None)
+    ch = next((c for c in chans if c["type"] == 0 and c["id"] == ASSET_CHANNEL_ID), None)
+    if ch is None:
+        ch = next((c for c in chans if c["type"] == 0 and c["name"] == ASSET_CHANNEL), None)
     if ch is None:
         print(f"\nChannel #{ASSET_CHANNEL} BELUM ADA - bikin dulu manual di Discord,")
         print("terus jalankan tool ini lagi.")
